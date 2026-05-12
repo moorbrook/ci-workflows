@@ -6,7 +6,8 @@ name: rust-fmt
 on:
   workflow_call:
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   fmt:
