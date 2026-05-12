@@ -14,7 +14,8 @@ on:
   pull_request:
   workflow_dispatch:
 
-permissions: {}
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}-${{ github.event.pull_request.number || github.sha }}
@@ -38,10 +39,38 @@ jobs:
 
 | File | Purpose | Inputs |
 |---|---|---|
-| `rust-fmt.yml` | `cargo fmt --all --check` | none |
-| `rust-lint.yml` | `cargo clippy --workspace --all-targets -- -D warnings` | `extra-args`, `clippy-allows` |
-| `rust-test.yml` | `cargo nextest run` + doc tests | `os-matrix`, `use-nextest`, `extra-args` |
-| `rust-windows-cross.yml` | `cargo xwin build --target x86_64-pc-windows-msvc` | `extra-args` |
+| `rust-fmt.yml` | `cargo fmt --check` | `package-selection` (default `--all`) |
+| `rust-lint.yml` | `cargo clippy --all-targets -- -D warnings` | `package-selection`, `extra-args`, `clippy-allows` |
+| `rust-test.yml` | `cargo nextest run` + doc tests | `package-selection`, `os-matrix`, `use-nextest`, `extra-args` |
+| `rust-windows-cross.yml` | `cargo xwin build --target x86_64-pc-windows-msvc` | `package-selection`, `extra-args` |
+
+### Vendored `[patch.crates-io]` path deps
+
+If your workspace patches a crate with a vendored path dep (e.g. `lopdf =
+{ path = "vendor/lopdf-patch" }`), Cargo treats that path the same as a
+first-party crate: `cargo fmt --all` sweeps it, `cargo clippy --workspace`
+lints it with no `--cap-lints=warn` shield, and `cargo test --workspace`
+compiles its test target. Upstream-style drift, lints, or test fixtures
+that aren't tracked in your repo will fail CI.
+
+Workaround: pass an explicit package list via `package-selection` so the
+patched dep is skipped:
+
+```yaml
+jobs:
+  fmt:
+    uses: moorbrook/ci-workflows/.github/workflows/rust-fmt.yml@v1
+    with:
+      package-selection: "-p my-crate -p other-crate"
+  lint:
+    uses: moorbrook/ci-workflows/.github/workflows/rust-lint.yml@v1
+    with:
+      package-selection: "-p my-crate -p other-crate"
+  test:
+    uses: moorbrook/ci-workflows/.github/workflows/rust-test.yml@v1
+    with:
+      package-selection: "-p my-crate -p other-crate"
+```
 
 ## Cost discipline
 

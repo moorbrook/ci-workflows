@@ -8,6 +8,13 @@ name: rust-windows-cross
 on:
   workflow_call:
     inputs:
+      package-selection:
+        description: >
+          Cargo package selection. Default `--workspace` cross-compiles every workspace
+          member. Callers with vendored `[patch.crates-io]` path deps may pass an
+          explicit list (e.g. `-p crate1 -p crate2`) to skip patched-dep cross-compile.
+        type: string
+        default: "--workspace"
       extra-args:
         description: "Extra cargo args (e.g. --features kiosk)"
         type: string
@@ -29,4 +36,4 @@ jobs:
         with:
           tool: cargo-xwin
       - uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0  # v2.7.5
-      - run: cargo xwin build --target x86_64-pc-windows-msvc --workspace --locked ${{ inputs.extra-args }}
+      - run: cargo xwin build --target x86_64-pc-windows-msvc ${{ inputs.package-selection }} --locked ${{ inputs.extra-args }}

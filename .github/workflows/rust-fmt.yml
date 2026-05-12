@@ -5,6 +5,14 @@ name: rust-fmt
 
 on:
   workflow_call:
+    inputs:
+      package-selection:
+        description: >
+          Cargo package selection. Default `--all` formats every workspace member.
+          Callers with vendored `[patch.crates-io]` path deps should pass an explicit
+          list (e.g. `-p crate1 -p crate2`) to avoid sweeping upstream-style drift.
+        type: string
+        default: "--all"
 
 permissions:
   contents: read
@@ -18,4 +26,4 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup component add rustfmt
-      - run: cargo fmt --all --check
+      - run: cargo fmt ${{ inputs.package-selection }} --check

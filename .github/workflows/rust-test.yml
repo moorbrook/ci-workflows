@@ -10,6 +10,14 @@ name: rust-test
 on:
   workflow_call:
     inputs:
+      package-selection:
+        description: >
+          Cargo package selection. Default `--workspace` builds every workspace member.
+          Callers with vendored `[patch.crates-io]` path deps should pass an explicit
+          list (e.g. `-p crate1 -p crate2`) to avoid building the patched dep's
+          test target, which may reference fixtures not checked into the caller repo.
+        type: string
+        default: "--workspace"
       os-matrix:
         description: "JSON array of runner OS labels"
         type: string
@@ -45,8 +53,8 @@ jobs:
         with:
           tool: nextest
       - if: inputs.use-nextest
-        run: cargo nextest run --workspace --locked ${{ inputs.extra-args }}
+        run: cargo nextest run ${{ inputs.package-selection }} --locked ${{ inputs.extra-args }}
       - if: ${{ !inputs.use-nextest }}
-        run: cargo test --workspace --locked ${{ inputs.extra-args }}
+        run: cargo test ${{ inputs.package-selection }} --locked ${{ inputs.extra-args }}
       # Doc tests separately — nextest doesn't run them.
-      - run: cargo test --doc --workspace --locked ${{ inputs.extra-args }}
+      - run: cargo test --doc ${{ inputs.package-selection }} --locked ${{ inputs.extra-args }}
