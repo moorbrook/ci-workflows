@@ -1,0 +1,30 @@
+name: rust-lint
+
+# Reusable workflow: `cargo clippy` with -D warnings.
+# Callers: `uses: moorbrook/ci-workflows/.github/workflows/rust-lint.yml@v1`
+
+on:
+  workflow_call:
+    inputs:
+      extra-args:
+        description: "Extra cargo clippy args (e.g. --features foo)"
+        type: string
+        default: ""
+      clippy-allows:
+        description: "Clippy lint allow flags. Default keeps pedantic+nursery quiet to match the moorbrook default."
+        type: string
+        default: "-A clippy::pedantic -A clippy::nursery"
+
+permissions: {}
+
+jobs:
+  clippy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+      - run: rustup component add clippy
+      - uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0  # v2.7.5
+      - run: cargo clippy --workspace --all-targets --locked ${{ inputs.extra-args }} -- -D warnings ${{ inputs.clippy-allows }}

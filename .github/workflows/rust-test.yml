@@ -1,0 +1,51 @@
+name: rust-test
+
+# Reusable workflow: `cargo test --workspace` (or nextest).
+# Callers: `uses: moorbrook/ci-workflows/.github/workflows/rust-test.yml@v1`
+#
+# Default matrix is ubuntu-latest only. Public-repo callers can opt into
+# macOS/Windows via `with: os-matrix: '["ubuntu-latest", "macos-latest", "windows-latest"]'`.
+# AVOID macOS on private-repo callers — 10x quota multiplier.
+
+on:
+  workflow_call:
+    inputs:
+      os-matrix:
+        description: "JSON array of runner OS labels"
+        type: string
+        default: '["ubuntu-latest"]'
+      use-nextest:
+        description: "Use cargo-nextest instead of cargo test (faster, parallel)"
+        type: boolean
+        default: true
+      extra-args:
+        description: "Extra cargo args (e.g. --features foo)"
+        type: string
+        default: ""
+
+permissions: {}
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(inputs.os-matrix) }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+      - run: rustup show
+      - uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0  # v2.7.5
+      - if: inputs.use-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+      - if: inputs.use-nextest
+        run: cargo nextest run --workspace --locked ${{ inputs.extra-args }}
+      - if: ${{ !inputs.use-nextest }}
+        run: cargo test --workspace --locked ${{ inputs.extra-args }}
+      # Doc tests separately — nextest doesn't run them.
+      - run: cargo test --doc --workspace --locked ${{ inputs.extra-args }}
