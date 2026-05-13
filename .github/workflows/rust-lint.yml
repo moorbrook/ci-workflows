@@ -29,6 +29,13 @@ on:
           like `protobuf-compiler` or `cmake`).
         type: string
         default: ""
+      working-directory:
+        description: >
+          Directory the cargo commands run from (relative to repo root). Default
+          `.` is correct for repos with `Cargo.toml` at the root. Set to a subdir
+          (e.g. `search_app/backend`) when the Rust crate lives in a subdirectory.
+        type: string
+        default: "."
 
 permissions:
   contents: read
@@ -37,6 +44,9 @@ jobs:
   clippy:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
@@ -45,6 +55,8 @@ jobs:
         run: ${{ inputs.setup-commands }}
       - run: rustup component add clippy
       - uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0  # v2.7.5
+        with:
+          workspaces: ${{ inputs.working-directory }}
       # --no-deps: don't lint deps (including path-patched `[patch.crates-io]`
       # deps, which otherwise get linted as if they were first-party code).
       - run: cargo clippy ${{ inputs.package-selection }} --all-targets --no-deps --locked ${{ inputs.extra-args }} -- -D warnings ${{ inputs.clippy-allows }}

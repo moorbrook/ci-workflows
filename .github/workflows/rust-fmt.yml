@@ -13,6 +13,13 @@ on:
           list (e.g. `-p crate1 -p crate2`) to avoid sweeping upstream-style drift.
         type: string
         default: "--all"
+      working-directory:
+        description: >
+          Directory the cargo commands run from (relative to repo root). Default
+          `.` is correct for repos with `Cargo.toml` at the root. Set to a subdir
+          (e.g. `search_app/backend`) when the Rust crate lives in a subdirectory.
+        type: string
+        default: "."
 
 permissions:
   contents: read
@@ -21,6 +28,9 @@ jobs:
   fmt:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
