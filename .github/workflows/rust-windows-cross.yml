@@ -35,5 +35,10 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-xwin
+      # `llvm-ar` and `llvm-lib` are the same binary; ubuntu-latest ships
+      # the former but not the latter. cc-rs build scripts (e.g. zstd-sys)
+      # spawn `llvm-lib` by name when building for the MSVC target, so a
+      # symlink is enough.
+      - run: sudo ln -sf "$(which llvm-ar)" /usr/local/bin/llvm-lib
       - uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0  # v2.7.5
       - run: cargo xwin build --target x86_64-pc-windows-msvc ${{ inputs.package-selection }} --locked ${{ inputs.extra-args }}
