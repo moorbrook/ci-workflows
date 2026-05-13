@@ -35,10 +35,16 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-xwin
-      # `llvm-ar` and `llvm-lib` are the same binary; ubuntu-latest ships
-      # the former but not the latter. cc-rs build scripts (e.g. zstd-sys)
-      # spawn `llvm-lib` by name when building for the MSVC target, so a
-      # symlink is enough.
-      - run: sudo ln -sf "$(which llvm-ar)" /usr/local/bin/llvm-lib
+      # cc-rs build scripts (e.g. zstd-sys) spawn `llvm-lib` by name when
+      # producing COFF archives for the MSVC target. ubuntu-latest installs
+      # LLVM under versioned paths (`/usr/lib/llvm-N/bin/`) and doesn't put
+      # `llvm-ar` or `llvm-lib` on the default PATH, so we install the
+      # unversioned `llvm` package and symlink. `llvm-ar` and `llvm-lib`
+      # are the same binary — behavior switches on argv[0].
+      - run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends llvm
+          sudo ln -sf "$(command -v llvm-ar)" /usr/local/bin/llvm-lib
+          llvm-lib --version | head -1
       - uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0  # v2.7.5
       - run: cargo xwin build --target x86_64-pc-windows-msvc ${{ inputs.package-selection }} --locked ${{ inputs.extra-args }}
