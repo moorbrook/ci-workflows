@@ -30,6 +30,12 @@ on:
         description: "Extra cargo args (e.g. --features foo)"
         type: string
         default: ""
+      setup-commands:
+        description: >
+          Shell commands to run before cargo (e.g. apt-installing build deps
+          like `protobuf-compiler` or `cmake`). Multi-line strings work.
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -46,6 +52,8 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           persist-credentials: false
+      - if: inputs.setup-commands != ''
+        run: ${{ inputs.setup-commands }}
       - run: rustup show
       - uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0  # v2.7.5
       - if: inputs.use-nextest
@@ -56,5 +64,14 @@ jobs:
         run: cargo nextest run ${{ inputs.package-selection }} --locked ${{ inputs.extra-args }}
       - if: ${{ !inputs.use-nextest }}
         run: cargo test ${{ inputs.package-selection }} --locked ${{ inputs.extra-args }}
-      # Doc tests separately — nextest doesn't run them.
-      - run: cargo test --doc ${{ inputs.package-selection }} --locked ${{ inputs.extra-args }}
+      # Doc tests separately — nextest doesn't run them. Skip silently when
+      # there are no library targets (bin-only crates would otherwise fail
+      # with "no library targets found").
+      - name: cargo test --doc (skips when no lib targets)
+        run: |
+          if cargo metadata --no-deps --format-version 1 \
+              | jq -e '[.packages[].targets[] | select(.kind | any(. == "lib"))] | length > 0' >/dev/null; then
+            cargo test --doc ${{ inputs.package-selection }} --locked ${{ inputs.extra-args }}
+          else
+            echo "No library targets in workspace — skipping doc tests."
+          fi
