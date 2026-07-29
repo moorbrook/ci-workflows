@@ -39,10 +39,10 @@ jobs:
 
 | File | Purpose | Inputs |
 |---|---|---|
-| `rust-fmt.yml` | `cargo fmt --check` | `package-selection` (default `--all`) |
-| `rust-lint.yml` | `cargo clippy --all-targets -- -D warnings` | `package-selection`, `extra-args`, `clippy-allows` |
-| `rust-test.yml` | `cargo nextest run` + doc tests | `package-selection`, `os-matrix`, `use-nextest`, `extra-args` |
-| `rust-windows-cross.yml` | `cargo xwin build --target x86_64-pc-windows-msvc` | `package-selection`, `extra-args` |
+| `rust-fmt.yml` | `cargo fmt --check` | `package-selection` (default `--all`), `working-directory` |
+| `rust-lint.yml` | `cargo clippy --all-targets --no-deps --locked -- -D warnings` | `package-selection`, `extra-args`, `clippy-allows`, `setup-commands`, `working-directory` |
+| `rust-test.yml` | `cargo nextest run` + conditional doc tests | `package-selection`, `os-matrix`, `use-nextest`, `extra-args`, `setup-commands`, `working-directory` |
+| `rust-windows-cross.yml` | `cargo xwin build --target x86_64-pc-windows-msvc` | `package-selection`, `extra-args`, `setup-commands`, `working-directory` |
 
 ### Vendored `[patch.crates-io]` path deps
 
@@ -71,6 +71,21 @@ jobs:
     with:
       package-selection: "-p my-crate -p other-crate"
 ```
+
+For a Rust workspace below the repository root, set `working-directory`. Reusable lint, test, and Windows cross-build jobs can also run caller-provided setup commands before Cargo:
+
+```yaml
+jobs:
+  test:
+    uses: moorbrook/ci-workflows/.github/workflows/rust-test.yml@v1
+    with:
+      working-directory: search_app/backend
+      setup-commands: |
+        sudo apt-get update -qq
+        sudo apt-get install -y --no-install-recommends protobuf-compiler
+```
+
+Test jobs use nextest by default and then run Rust doc tests when the workspace contains a library target. Binary-only workspaces skip the doc-test step. The Windows cross-build job installs LLVM and exposes `llvm-lib` for crates whose build scripts create MSVC-format archives.
 
 ## Cost discipline
 
