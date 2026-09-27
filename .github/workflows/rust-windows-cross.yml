@@ -53,6 +53,18 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-xwin
+      # The SDK import libraries arrive lowercase (directml.lib, pathcch.lib)
+      # but ONNX Runtime, via the `ort` crate, links them as DirectML.lib and
+      # PathCch.lib, which a case-sensitive runner cannot find. xwin will not
+      # add these aliases (Jake-Shadle/xwin#145), so download the SDK first
+      # and add them here. Harmless for crates that never link these libs.
+      - name: Add CamelCase aliases for xwin SDK libraries
+        run: |
+          cargo xwin cache xwin
+          d="${XWIN_CACHE_DIR:-$HOME/.cache/cargo-xwin/xwin}/sdk/lib/um/x86_64"
+          ln -sf directml.lib "$d/DirectML.lib"
+          ln -sf pathcch.lib "$d/PathCch.lib"
+          ls -lL "$d/DirectML.lib" "$d/PathCch.lib"  # fails if a target is missing
       # cc-rs build scripts (e.g. zstd-sys) spawn `llvm-lib` by name when
       # producing COFF archives for the MSVC target. ubuntu-latest installs
       # LLVM under versioned paths (`/usr/lib/llvm-N/bin/`) and doesn't put
